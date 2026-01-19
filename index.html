@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIBE GUGUDAN PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .neon-border {
+            box-shadow: 0 0 15px rgba(191, 255, 0, 0.3);
+            border: 1px solid rgba(191, 255, 0, 0.5);
+        }
+
+        .accent-color {
+            color: #bfff00;
+        }
+
+        .bg-accent {
+            background-color: #bfff00;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 크롬 숫자기 화살표 제거 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md bg-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-800">
+        <!-- 헤더 -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-black accent-color tracking-tighter italic">VIBE GUGUDAN</h1>
+            <p class="text-slate-400 text-sm mt-1">Practice with Daddy's Vibe</p>
+        </header>
+
+        <!-- 모드 전환 탭 -->
+        <div class="flex bg-slate-800 p-1 rounded-xl mb-8">
+            <button id="btn-quiz-mode" class="flex-1 py-2 rounded-lg font-bold transition-all bg-accent text-slate-900" onclick="switchMode('quiz')">Quiz</button>
+            <button id="btn-study-mode" class="flex-1 py-2 rounded-lg font-bold transition-all text-slate-400" onclick="switchMode('study')">Study</button>
+        </div>
+
+        <!-- 퀴즈 모드 화면 -->
+        <div id="quiz-view" class="fade-in space-y-6">
+            <div class="bg-slate-800 rounded-2xl p-10 text-center relative overflow-hidden">
+                <div class="text-6xl font-black tracking-widest mb-2" id="question">
+                    7 × 8
+                </div>
+                <div class="text-slate-500 text-xs uppercase tracking-widest">Type your answer</div>
+                
+                <!-- 점수 표시 -->
+                <div class="absolute top-4 right-4 text-xs font-bold text-slate-500">
+                    SCORE: <span id="score" class="accent-color">0</span>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <input type="number" id="answer-input" 
+                    class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl py-4 text-center text-3xl font-bold focus:outline-none focus:border-[#bfff00] transition-colors"
+                    placeholder="?" autocomplete="off">
+                
+                <button onclick="checkAnswer()" 
+                    class="w-full bg-accent text-slate-900 font-black py-4 rounded-xl text-lg hover:brightness-110 active:scale-95 transition-all">
+                    CONFIRM
+                </button>
+            </div>
+
+            <div id="feedback" class="text-center h-6 font-bold text-sm"></div>
+        </div>
+
+        <!-- 학습 모드 화면 (기본 숨김) -->
+        <div id="study-view" class="hidden fade-in space-y-4">
+            <div class="grid grid-cols-4 gap-2 mb-4" id="table-selector">
+                <!-- 2단부터 9단 버튼이 자바스크립트로 생성됨 -->
+            </div>
+            <div class="bg-slate-800 rounded-2xl p-6 max-h-64 overflow-y-auto custom-scrollbar" id="table-content">
+                <p class="text-center text-slate-500 py-10">Select a table to study</p>
+            </div>
+        </div>
+
+        <!-- 푸터 -->
+        <footer class="mt-8 pt-6 border-t border-slate-800 text-center">
+            <button onclick="resetGame()" class="text-slate-500 hover:text-white text-xs font-bold tracking-widest transition-colors">
+                <i class="fas fa-redo-alt mr-1"></i> RESET SESSION
+            </button>
+        </footer>
+    </div>
+
+    <!-- 커스텀 메시지 박스 -->
+    <div id="message-box" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full bg-accent text-slate-900 font-bold shadow-lg transform translate-y-20 opacity-0 transition-all duration-300">
+        Correct!
+    </div>
+
+    <script>
+        let currentMode = 'quiz';
+        let currentQuestion = { a: 0, b: 0, ans: 0 };
+        let score = 0;
+
+        // 윈도우 로드 시 초기화
+        window.onload = function() {
+            generateQuestion();
+            createTableButtons();
+            
+            // 엔터키 지원
+            document.getElementById('answer-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') checkAnswer();
+            });
+        };
+
+        function switchMode(mode) {
+            currentMode = mode;
+            const quizView = document.getElementById('quiz-view');
+            const studyView = document.getElementById('study-view');
+            const quizBtn = document.getElementById('btn-quiz-mode');
+            const studyBtn = document.getElementById('btn-study-mode');
+
+            if (mode === 'quiz') {
+                quizView.classList.remove('hidden');
+                studyView.classList.add('hidden');
+                quizBtn.classList.add('bg-accent', 'text-slate-900');
+                quizBtn.classList.remove('text-slate-400');
+                studyBtn.classList.remove('bg-accent', 'text-slate-900');
+                studyBtn.classList.add('text-slate-400');
+                document.getElementById('answer-input').focus();
+            } else {
+                studyView.classList.remove('hidden');
+                quizView.classList.add('hidden');
+                studyBtn.classList.add('bg-accent', 'text-slate-900');
+                studyBtn.classList.remove('text-slate-400');
+                quizBtn.classList.remove('bg-accent', 'text-slate-900');
+                quizBtn.classList.add('text-slate-400');
+            }
+        }
+
+        // 퀴즈 생성
+        function generateQuestion() {
+            const a = Math.floor(Math.random() * 8) + 2; // 2~9
+            const b = Math.floor(Math.random() * 9) + 1; // 1~9
+            currentQuestion = { a, b, ans: a * b };
+            document.getElementById('question').innerText = `${a} × ${b}`;
+            document.getElementById('answer-input').value = '';
+            document.getElementById('answer-input').focus();
+        }
+
+        // 정답 체크
+        function checkAnswer() {
+            const input = document.getElementById('answer-input');
+            const userAnswer = parseInt(input.value);
+            const feedback = document.getElementById('feedback');
+
+            if (isNaN(userAnswer)) return;
+
+            if (userAnswer === currentQuestion.ans) {
+                score += 10;
+                document.getElementById('score').innerText = score;
+                showMessage("Awesome! +10", "#bfff00");
+                generateQuestion();
+            } else {
+                showMessage("Keep trying!", "#ff4444");
+                input.value = '';
+                input.classList.add('border-red-500');
+                setTimeout(() => input.classList.remove('border-red-500'), 500);
+            }
+        }
+
+        // 하단 메시지 표시
+        function showMessage(text, color) {
+            const box = document.getElementById('message-box');
+            box.innerText = text;
+            box.style.backgroundColor = color;
+            box.classList.remove('translate-y-20', 'opacity-0');
+            box.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                box.classList.add('translate-y-20', 'opacity-0');
+                box.classList.remove('translate-y-0', 'opacity-100');
+            }, 1500);
+        }
+
+        // 학습 모드 버튼 생성
+        function createTableButtons() {
+            const container = document.getElementById('table-selector');
+            for (let i = 2; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.innerText = `${i}단`;
+                btn.className = "bg-slate-800 hover:bg-slate-700 py-2 rounded-lg text-sm font-bold transition-colors border border-slate-700";
+                btn.onclick = () => showTable(i);
+                container.appendChild(btn);
+            }
+        }
+
+        // 학습 모드 내용 표시
+        function showTable(num) {
+            const content = document.getElementById('table-content');
+            let html = `<h3 class="text-xl font-black accent-color mb-4 text-center">${num} 단</h3><div class="grid grid-cols-2 gap-x-4 gap-y-2">`;
+            for (let i = 1; i <= 9; i++) {
+                html += `<div class="text-sm bg-slate-700/30 p-2 rounded flex justify-between px-4">
+                            <span class="text-slate-400">${num} × ${i}</span>
+                            <span class="font-bold text-white">${num * i}</span>
+                         </div>`;
+            }
+            html += `</div>`;
+            content.innerHTML = html;
+        }
+
+        function resetGame() {
+            score = 0;
+            document.getElementById('score').innerText = '0';
+            generateQuestion();
+            document.getElementById('table-content').innerHTML = '<p class="text-center text-slate-500 py-10">Select a table to study</p>';
+            showMessage("Session Reset", "#ffffff");
+        }
+    </script>
+</body>
+</html>
